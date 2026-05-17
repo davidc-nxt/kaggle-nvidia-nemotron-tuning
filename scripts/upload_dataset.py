@@ -39,17 +39,40 @@ def _need_token() -> None:
 
 
 def _kaggle_username() -> str:
-    # `kaggle config view` doesn't expose the new-token username; ask the user.
-    out = subprocess.run(
-        ["kaggle", "whoami"],
-        capture_output=True, text=True, check=False,
+    """Resolve the Kaggle username.
+
+    Order of preference:
+      1. `KAGGLE_USERNAME` env var (set in .env)
+      2. `~/.kaggle/kaggle.json` classic credentials file (username field)
+      3. Fail with a clear message
+
+    `kaggle whoami` was removed in CLI 2.1.x, so we can't lean on it for the
+    new short-lived KGAT_ token format.
+    """
+    if u := os.environ.get("KAGGLE_USERNAME"):
+        return u
+
+    env = REPO / ".env"
+    if env.exists():
+        for line in env.read_text().splitlines():
+            if line.startswith("KAGGLE_USERNAME="):
+                return line.split("=", 1)[1].strip()
+
+    cred = Path.home() / ".kaggle" / "kaggle.json"
+    if cred.exists():
+        try:
+            data = json.loads(cred.read_text())
+            u = data.get("username")
+            if u and u != "YOUR_USERNAME":
+                return u
+        except Exception:
+            pass
+
+    print(
+        "error: Kaggle username unknown. Set KAGGLE_USERNAME=<your-username> in .env "
+        "or in ~/.kaggle/kaggle.json.",
+        file=sys.stderr,
     )
-    text = (out.stdout or "") + (out.stderr or "")
-    for line in text.splitlines():
-        line = line.strip()
-        if line and not line.startswith("Warning"):
-            return line
-    print("error: could not determine Kaggle username via `kaggle whoami`", file=sys.stderr)
     sys.exit(1)
 
 
@@ -83,9 +106,10 @@ def main() -> int:
     print(f"staged dataset at {STAGE} (id={metadata['id']})")
 
     if args.version is None:
+        # Kaggle CLI 2.1.x defaults new datasets to private; `--private` was removed.
         cmd = ["kaggle", "datasets", "create", "-p", str(STAGE)]
-        if not args.public:
-            cmd.append("--private")
+        if args.public:
+            cmd.append("--public")
     else:
         cmd = ["kaggle", "datasets", "version", "-p", str(STAGE), "-m", args.version, "--dir-mode", "zip"]
 
