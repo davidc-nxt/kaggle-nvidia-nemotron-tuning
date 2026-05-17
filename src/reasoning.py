@@ -237,9 +237,66 @@ def trace_cipher(prompt: str, answer: str) -> str:
 
 
 def trace_equation(prompt: str, answer: str) -> str:
+    from src.puzzles import equation as eq_solver
+
+    examples, query = eq_solver.parse_prompt(prompt)
+    if query is None or not examples:
+        return _boxed(answer)
+    a_q, op_q, b_q = query
+
+    by_op: dict[str, list[tuple[str, str, str, str]]] = {}
+    for a, op, b, r in examples:
+        by_op.setdefault(op, []).append((a, op, b, r))
+
+    op_examples = by_op.get(op_q, [])
+    other_ops = sorted(o for o in by_op if o != op_q)
+
+    if op_examples:
+        ex_text = ", ".join(f"{a}{op}{b} -> {r}" for a, op, b, r in op_examples[:3])
+        match_clause = (
+            f"The operator '{op_q}' appears in the demonstrations, so I align the "
+            f"rule on the {len(op_examples)} example(s) using '{op_q}': {ex_text}. "
+        )
+    else:
+        all_ex = ", ".join(f"{a}{op}{b} -> {r}" for a, op, b, r in examples[:3])
+        match_clause = (
+            f"The query operator '{op_q}' has no demonstration. I fit a rule that is "
+            f"consistent across the available examples ({all_ex}) and reuse it. "
+        )
+
+    # Try to characterise the rule the solver actually selected. We re-run the
+    # rule search so the trace mirrors solver behaviour rather than guessing.
+    cands_for_fit = op_examples if op_examples else examples
+    fit = eq_solver._fit_rule(cands_for_fit)
+    if fit is None:
+        rule_clause = (
+            "No closed-form rule from the library matched every example exactly. "
+            "I fall back to a structural guess based on the inputs. "
+        )
+    else:
+        name, _ = fit
+        rule_clause = (
+            f"Among the candidate transformations (real and reversed arithmetic, "
+            f"digit-wise operations, and permutations of the input characters), "
+            f"the rule labelled '{name.split('|')[0]}' is the simplest one that "
+            f"reproduces every example. "
+        )
+
+    apply_clause = (
+        f"Applying that rule to the query {a_q}{op_q}{b_q} gives {answer}."
+    )
+
+    other_clause = ""
+    if other_ops:
+        other_clause = (
+            f" Other operators in this puzzle ({', '.join(other_ops)}) carry "
+            f"their own rules; only the one matching '{op_q}' matters here."
+        )
+
     return (
-        f"Match the query against the examples on the operator symbol and "
-        f"apply the matching rewrite.\n\n{_boxed(answer)}"
+        f"Wonderland equation puzzles bind each operator symbol to its own rule. "
+        f"{match_clause}{rule_clause}{apply_clause}{other_clause}\n\n"
+        f"{_boxed(answer)}"
     )
 
 
