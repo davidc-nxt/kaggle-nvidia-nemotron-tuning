@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Secrets
+.env
+.env.local
+kaggle.json
+*.kgat
+*kgat*
+kaggle.txt
+
+# Data — large; pull via `kaggle competitions download` instead
+data/raw/*.zip
+data/raw/*.csv
+data/processed/*
+data/synthetic/*
+!data/**/.gitkeep
+
+# Model weights / adapters
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+references/model_card/weights/
+
+# Submissions
+submissions/*.zip
+submissions/run-*/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

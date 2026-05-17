@@ -1,0 +1,33 @@
+# Local development on macOS (Apple Silicon). Heavy training deps run on Kaggle.
+# Pin loosely so we can move forward; tighten before submission.
+
+# Kaggle / data
+kaggle>=1.7.0
+kagglehub>=0.3.0
+polars>=1.0.0
+pandas>=2.2.0
+pyarrow>=16.0.0
+python-dotenv>=1.0.1
+
+# Notebook / EDA
+jupyterlab>=4.2.0
+ipykernel>=6.29.0
+matplotlib>=3.9.0
+seaborn>=0.13.0
+
+# LLM tooling — light versions for local prompt/data work.
+# Heavy training (transformers + peft + accelerate + bitsandbytes + flash-attn + mamba-ssm)
+# is installed inside the Kaggle training notebook, not locally.
+transformers>=4.46.0
+tokenizers>=0.20.0
+datasets>=3.0.0
+peft>=0.13.0
+huggingface-hub>=0.26.0
+
+# Eval helpers
+sympy>=1.13.0          # for equation puzzles
+regex>=2024.9.11       # boxed-answer extraction
+rich>=13.9.0           # nicer console output
+
+# Quality of life
+tqdm>=4.66.0
