@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Callable
 
 from src.data import categorize
-from src.puzzles import gravity, numeral, units
+from src.puzzles import binary, gravity, numeral, units
 
 Solver = Callable[[str], str]
 
@@ -13,6 +13,7 @@ _SOLVERS: dict[str, Solver] = {
     "numeral": numeral.solve,
     "units": units.solve,
     "gravity": gravity.solve,
+    "binary": binary.solve,
 }
 
 
