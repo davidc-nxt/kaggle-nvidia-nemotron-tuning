@@ -34,13 +34,26 @@ def _src(lines: tuple[str, ...]) -> list[str]:
     return [p + "\n" for p in parts[:-1]] + [parts[-1]]
 
 
-def nb(cells: list[dict]) -> dict:
+def nb(cells: list[dict], *, accelerator: str | None = None) -> dict:
+    """Build a notebook. If `accelerator` is given, embed it in the Kaggle
+    notebook metadata block so a `kaggle kernels push` allocates that GPU type
+    (the CLI's `kernel-metadata.json` doesn't expose this field; the .ipynb
+    metadata does)."""
+    meta: dict = {
+        "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
+        "language_info": {"name": "python", "version": "3.13"},
+    }
+    if accelerator is not None:
+        meta["kaggle"] = {
+            "accelerator": accelerator,
+            "isGpuEnabled": True,
+            "isInternetEnabled": True,
+            "language": "python",
+            "sourceType": "notebook",
+        }
     return {
         "cells": cells,
-        "metadata": {
-            "kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
-            "language_info": {"name": "python", "version": "3.13"},
-        },
+        "metadata": meta,
         "nbformat": 4,
         "nbformat_minor": 5,
     }
@@ -121,7 +134,7 @@ eda = nb([
 # -----------------------------------------------------------------------------
 # 02_train_kaggle.ipynb — adapted from the official submission demo
 # -----------------------------------------------------------------------------
-train_nb = nb([
+train_nb = nb(accelerator="nvidiaTeslaT4x2", cells=[
     md(
         "# 02 · Train LoRA on Nemotron-3-Nano-30B (Kaggle GPU)",
         "",
@@ -219,13 +232,31 @@ train_nb = nb([
         "compatible with the BF16 evaluation path.",
     ),
     code(
-        "import site",
+        "import site, subprocess",
+        "import torch",
+        "",
+        "# Diagnostics: surface the allocated accelerator BEFORE we try to load a 30B model.",
+        "print(f'torch.cuda.is_available(): {torch.cuda.is_available()}')",
+        "print(f'torch.cuda.device_count(): {torch.cuda.device_count()}')",
+        "for i in range(torch.cuda.device_count()):",
+        "    props = torch.cuda.get_device_properties(i)",
+        "    print(f'  cuda:{i}  {torch.cuda.get_device_name(i)}  '",
+        "          f'{props.total_memory / 1024**3:.1f} GiB  sm_{props.major}{props.minor}')",
+        "print()",
+        "if torch.cuda.device_count() < 2:",
+        "    raise RuntimeError(",
+        "        f'Got {torch.cuda.device_count()} GPU(s); the 30B model needs T4 x2 (32 GiB) or larger. '",
+        "        'Open this kernel in the Kaggle editor, Settings -> Accelerator -> select GPU T4 x2 (not GPU T4), '",
+        "        'then Save Version -> Save & Run All.'",
+        "    )",
+        "print(subprocess.run(['nvidia-smi'], capture_output=True, text=True).stdout)",
+        "",
         "# Some Nemotron builds need this CUTLASS DSL helper (shipped from a Kaggle utility script).",
         "cutlass_pkg_path = '/kaggle/usr/lib/notebooks/ryanholbrook/nvidia-utility-script/nvidia_cutlass_dsl/python_packages/'",
         "if os.path.exists(cutlass_pkg_path):",
         "    site.addsitedir(cutlass_pkg_path)",
         "",
-        "import kagglehub, torch",
+        "import kagglehub",
         "from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training, TaskType",
         "from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig",
         "",
