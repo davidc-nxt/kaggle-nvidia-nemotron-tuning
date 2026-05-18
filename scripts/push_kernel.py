@@ -61,6 +61,11 @@ def main() -> int:
     p.add_argument("--title", default="Wonderland Nemotron Train")
     p.add_argument("--dataset-slug", default=DEFAULT_DATASET_SLUG)
     p.add_argument(
+        "--wheels-dataset",
+        default="aditya2909rb/nemotron-native-wheels",
+        help="Public Kaggle Dataset with mamba_ssm + causal_conv1d + triton + einops wheels (cp312)",
+    )
+    p.add_argument(
         "--model",
         default="metric/nemotron-3-nano-30b-a3b-bf16/transformers/default/1",
         help="Kaggle Models slug (must include version suffix)",
@@ -101,9 +106,12 @@ def main() -> int:
         # pre-installed packages + the ryanholbrook/nvidia-utility-script kernel
         # source for mamba_ssm / CUTLASS DSL.
         "enable_internet": "false",
-        "dataset_sources": [f"{user}/{args.dataset_slug}"],
+        "dataset_sources": [
+            f"{user}/{args.dataset_slug}",
+            args.wheels_dataset,
+        ],
         "competition_sources": [args.competition],
-        "kernel_sources": ["ryanholbrook/nvidia-utility-script"],
+        "kernel_sources": [],
         "model_sources": [args.model],
     }
     (STAGE / "kernel-metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
