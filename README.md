@@ -115,8 +115,38 @@ kaggle competitions submit -c nvidia-nemotron-model-reasoning-challenge \
 
 ## End-to-end pipeline
 
-Local M5 / 16 GB cannot host the 63 GB BF16 base — heavy training runs on Kaggle Notebooks.
-Data prep and oracle solving happen locally; training and submission happen on Kaggle.
+Local M5 / 16 GB cannot host the 63 GB BF16 base — heavy training runs on **Google Colab Pro**
+(the Kaggle path is documented further down but turned out to be a slog because of accelerator/
+internet restrictions tied to the competition). Data prep and oracle solving happen locally;
+training happens on Colab.
+
+### Colab Pro (recommended training path)
+
+1. Build the SFT data locally and upload to Kaggle (your data lives there even if training
+   doesn't):
+   ```bash
+   source .venv/bin/activate
+   export KAGGLE_API_TOKEN=$(grep KAGGLE_API_TOKEN .env | cut -d= -f2)
+   python scripts/generate_synthetic.py --per-category 5000
+   python scripts/build_sft_data.py
+   python scripts/upload_dataset.py        # first time
+   ```
+2. Open `notebooks/03_train_colab.ipynb` in Colab — either via File → Upload or by browsing
+   GitHub from inside Colab (File → Open notebook → GitHub).
+3. Add **two Colab Secrets** (left sidebar 🗝):
+   * `KAGGLE_USERNAME` = your Kaggle username (e.g. `jokerdc`)
+   * `KAGGLE_KEY`      = either the new KGAT_... token or the classic API key
+4. Runtime → Change runtime type → **A100** (or L4 24 GB if A100 isn't available).
+5. Runtime → Run all. The notebook installs deps, pulls the data + base model from Kaggle,
+   trains QLoRA (4-bit base on L4/A100 40 GB; BF16 on A100 80 GB), validates on 300 held-out
+   rows, and prompts you to download `submission.zip`.
+6. Submit:
+   ```bash
+   kaggle competitions submit -c nvidia-nemotron-model-reasoning-challenge \
+       -f path/to/submission.zip -m "<message>"
+   ```
+
+### Kaggle Notebooks (alternate path, more friction)
 
 ```bash
 source .venv/bin/activate
